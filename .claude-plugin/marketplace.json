@@ -7,8 +7,17 @@
   "plugins": [
     {
       "name": "willie-skills",
-      "source": ".",
-      "description": "Review, Cursor review, implementation, feedback triage and watch skills for Comfy-Org Developer Platform work."
+      "source": "./",
+      "description": "Review, Cursor review, implementation, feedback triage and watch skills for Comfy-Org Developer Platform work.",
+      "strict": false,
+      "skills": [
+        "./skills/cursor-review",
+        "./skills/dplat-review",
+        "./skills/fe-review",
+        "./skills/feedback-triage",
+        "./skills/superset-implementer",
+        "./skills/watch-for-activity"
+      ]
     }
   ]
 }
