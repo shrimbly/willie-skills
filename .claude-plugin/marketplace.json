@@ -1,0 +1,14 @@
+{
+  "name": "willie-skills",
+  "owner": {
+    "name": "Willie"
+  },
+  "description": "Willie's Claude skills for Comfy-Org Developer Platform work.",
+  "plugins": [
+    {
+      "name": "willie-skills",
+      "source": ".",
+      "description": "Review, Cursor review, implementation, feedback triage and watch skills for Comfy-Org Developer Platform work."
+    }
+  ]
+}

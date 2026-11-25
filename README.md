@@ -16,12 +16,21 @@ Willie's Claude Code skills for Comfy-Org Developer Platform work, kept in one r
 Claude Code loads project skills from `.claude/skills/<name>/SKILL.md` in the repo it is working in. So every skill here lives at `.claude/skills/<name>/`.
 
 - **Cloud sessions:** add this repo to the project (Project settings, Repositories). Each new thread clones it, and its skills show up next to the other repos' skills.
-- **Your Mac:** clone it and link each skill into `~/.claude/skills`:
+- **Your Mac (Claude Code):** install it as a plugin. Claude Code clones the private repo with your existing GitHub sign-in (`gh auth login` or an SSH key).
 
-  ```bash
-  git clone git@github.com:shrimbly/willie-skills.git ~/Dev/willie-skills
-  for d in ~/Dev/willie-skills/.claude/skills/*/; do ln -sfn "${d%/}" ~/.claude/skills/"$(basename "$d")"; done
   ```
+  /plugin marketplace add shrimbly/willie-skills
+  /plugin install willie-skills@willie-skills
+  ```
+
+  The skills then show as `/willie-skills:dplat-review` and so on. Get new versions with `/plugin marketplace update willie-skills`. If you linked the skills into `~/.claude/skills` before, remove those links so each skill loads once.
+- **claude.ai and the desktop app:** go to Customize, then Plugins, then Add. Either "Add marketplace" with this repo (the Claude GitHub App needs access to it), or "Upload plugin" with the zip from `scripts/build-plugin-zip.sh`.
+
+## The plugin layout
+
+`.claude-plugin/plugin.json` is the plugin manifest. Its `skills` key points at `./.claude/skills`, so the same folders serve cloud sessions and the plugin. `.claude-plugin/marketplace.json` lists the repo root as the one plugin, so the repo is its own marketplace.
+
+`scripts/build-plugin-zip.sh` writes `dist/willie-skills.zip` in the standard layout (`skills/<name>/SKILL.md` beside `.claude-plugin/plugin.json`) for the upload. Check changes with `claude plugin validate .`. Bump `version` in `plugin.json` when you change a skill, so installed copies update.
 
 ## Script paths
 
