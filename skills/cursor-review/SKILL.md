@@ -8,12 +8,7 @@ description: |
   in one line, then resolve the bot's threads. Use when asked to "run cursor review",
   "get the automated review", "add the cursor-review label", "wait for the bot
   review and fix", or "/cursor-review [pr-number]".
-allowed-tools:
-  - Bash
-  - Read
-  - Edit
-  - Write
-  - Monitor
+allowed-tools: Bash Read Edit Write Monitor
 ---
 
 # Cursor review on a pull request

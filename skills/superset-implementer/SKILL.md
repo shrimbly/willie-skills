@@ -1,16 +1,7 @@
 ---
 name: superset-implementer
 description: "The contract for an implementation agent running inside a Superset workspace (git worktree) or as a Claude Code cloud session: take one brief, deliver one high-quality PR on one branch, finish by pushing and opening a draft PR (in a workspace and in a cloud session alike), then handle review feedback until merge. Load this when a prompt says you are an implementation agent, names a brief under ~/.claude/superset-orchestrator/briefs/, or asks you to work an item in a Superset workspace or a cloud session."
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Agent
-  - AskUserQuestion
-  - WebFetch
+allowed-tools: Bash Read Write Edit Grep Glob Agent AskUserQuestion WebFetch
 metadata:
   version: "1.0.0"
 ---
