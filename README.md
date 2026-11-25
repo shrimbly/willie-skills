@@ -28,9 +28,11 @@ The skills live at `skills/<name>/SKILL.md`, the standard plugin layout. `.claud
 
 ## The plugin layout
 
-`.claude-plugin/plugin.json` is the plugin manifest and `.claude-plugin/marketplace.json` lists the repo root as the one plugin, so the repo is its own marketplace. Skills go in `skills/`, not in `.claude/skills`: claude.ai documents only the standard layout. Keep angle brackets out of skill descriptions and write `allowed-tools` as one space-separated line, to stay inside the Agent Skills format claude.ai checks against.
+`.claude-plugin/marketplace.json` makes the repo its own marketplace. It lists one plugin whose source is the repo root, with `strict: false` and each skill folder named under `skills`, the same shape as Anthropic's own skills marketplace. Add a new skill's folder to that list. There is no `plugin.json` at the root.
 
-`scripts/build-plugin-zip.sh` writes `dist/willie-skills.zip` for claude.ai's Upload plugin. Check changes with `claude plugin validate . --profile directory`. Bump `version` in `plugin.json` when you change a skill, so installed copies update.
+Skills live in `skills/`, not `.claude/skills`, because claude.ai documents only the standard layout. Keep angle brackets out of skill descriptions and write `allowed-tools` as one space-separated line.
+
+`scripts/build-plugin-zip.sh` writes `dist/willie-skills.zip` for claude.ai's Upload plugin, using `scripts/plugin.json` as the zip's manifest. Bump `version` there when you change a skill. Check changes with `claude plugin validate .`.
 
 ## Script paths
 
