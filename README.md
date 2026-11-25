@@ -13,7 +13,7 @@ Willie's Claude Code skills for Comfy-Org Developer Platform work, kept in one r
 
 ## How Claude Code finds them
 
-Claude Code loads project skills from `.claude/skills/<name>/SKILL.md` in the repo it is working in. So every skill here lives at `.claude/skills/<name>/`.
+The skills live at `skills/<name>/SKILL.md`, the standard plugin layout. `.claude/skills` is a link to `skills/`, because Claude Code loads project skills from `.claude/skills/<name>/SKILL.md` in the repo it is working in.
 
 - **Cloud sessions:** add this repo to the project (Project settings, Repositories). Each new thread clones it, and its skills show up next to the other repos' skills.
 - **Your Mac (Claude Code):** install it as a plugin. Claude Code clones the private repo with your existing GitHub sign-in (`gh auth login` or an SSH key).
@@ -28,9 +28,9 @@ Claude Code loads project skills from `.claude/skills/<name>/SKILL.md` in the re
 
 ## The plugin layout
 
-`.claude-plugin/plugin.json` is the plugin manifest. Its `skills` key points at `./.claude/skills`, so the same folders serve cloud sessions and the plugin. `.claude-plugin/marketplace.json` lists the repo root as the one plugin, so the repo is its own marketplace.
+`.claude-plugin/plugin.json` is the plugin manifest and `.claude-plugin/marketplace.json` lists the repo root as the one plugin, so the repo is its own marketplace. Skills go in `skills/`, not in `.claude/skills`: claude.ai documents only the standard layout. Keep angle brackets out of skill descriptions and write `allowed-tools` as one space-separated line, to stay inside the Agent Skills format claude.ai checks against.
 
-`scripts/build-plugin-zip.sh` writes `dist/willie-skills.zip` in the standard layout (`skills/<name>/SKILL.md` beside `.claude-plugin/plugin.json`) for the upload. Check changes with `claude plugin validate .`. Bump `version` in `plugin.json` when you change a skill, so installed copies update.
+`scripts/build-plugin-zip.sh` writes `dist/willie-skills.zip` for claude.ai's Upload plugin. Check changes with `claude plugin validate . --profile directory`. Bump `version` in `plugin.json` when you change a skill, so installed copies update.
 
 ## Script paths
 

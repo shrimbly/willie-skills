@@ -1,6 +1,6 @@
 ---
 name: fe-review
-description: "Post a review request for one or more ComfyUI frontend pull requests to the #frontend-code-reviews Slack channel, in the channel's convention, with the PR link, the Linear ticket link and a screenshot of the change. Waits for the automated Cursor review and clears its findings before the PR is marked ready and before anything is posted. Use when asked to \"ask for review\" on a Comfy-Org/ComfyUI_frontend PR, \"post to frontend code reviews\", \"/fe-review <pr or ticket>\", or after opening a frontend PR that needs a reviewer."
+description: "Post a review request for one or more ComfyUI frontend pull requests to the #frontend-code-reviews Slack channel, in the channel's convention, with the PR link, the Linear ticket link and a screenshot of the change. Waits for the automated Cursor review and clears its findings before the PR is marked ready and before anything is posted. Use when asked to \"ask for review\" on a Comfy-Org/ComfyUI_frontend PR, \"post to frontend code reviews\", \"/fe-review PR-or-ticket\", or after opening a frontend PR that needs a reviewer."
 ---
 
 # fe-review

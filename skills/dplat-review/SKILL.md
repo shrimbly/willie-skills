@@ -1,6 +1,6 @@
 ---
 name: dplat-review
-description: "Post a review request for one or more pull requests to the #pillar3-dev-platform-code-reviews Slack channel, in the channel's convention, with the PR link, the Linear ticket link, and a preview link pointing at the page the change affects. Waits for the automated Cursor review and clears its findings before the PR is marked ready and before anything is posted. For ComfyUI_frontend PRs use fe-review instead. Use when asked to \"ask for review\", \"post to the code reviews channel\", \"send this PR for review\", \"/dplat-review <pr or ticket>\", or after opening a dev-platform PR that needs a reviewer."
+description: "Post a review request for one or more pull requests to the #pillar3-dev-platform-code-reviews Slack channel, in the channel's convention, with the PR link, the Linear ticket link, and a preview link pointing at the page the change affects. Waits for the automated Cursor review and clears its findings before the PR is marked ready and before anything is posted. For ComfyUI_frontend PRs use fe-review instead. Use when asked to \"ask for review\", \"post to the code reviews channel\", \"send this PR for review\", \"/dplat-review PR-or-ticket\", or after opening a dev-platform PR that needs a reviewer."
 ---
 
 # dplat-review
