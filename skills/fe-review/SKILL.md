@@ -121,7 +121,7 @@ The user asking for this skill counts as approval to post. One message per PR to
 
 Report each message link back in one line per PR.
 
-**Record the post,** so step 9 and the Review bump task can find its thread later. Write `<owner>-<name>-<n>.json` (for example `Comfy-Org-ComfyUI_frontend-24320.json`) to `~/.claude/superset-orchestrator/reviews/` on a Mac, and to `/mnt/project-files/reviews/` in a cloud project thread:
+**Record the post,** so steps 8 and 9 can find its thread later. Write `<owner>-<name>-<n>.json` (for example `Comfy-Org-ComfyUI_frontend-24320.json`) to `~/.claude/superset-orchestrator/reviews/` on a Mac, and to `/mnt/project-files/reviews/` in a cloud project thread:
 
 ```json
 {"repo": "Comfy-Org/ComfyUI_frontend", "pr": 24320, "channel": "C0C6X92KC0H", "ts": "<message ts>", "permalink": "<message link>", "reviewers": [{"slack": "U0AG6QVE1L7", "github": "dante01yoon"}], "postedAt": "<date -u +%Y-%m-%dT%H:%M:%SZ>", "bumps": []}
@@ -132,14 +132,16 @@ Report each message link back in one line per PR.
 Start the `watch-for-activity` watch straight after the post, in the same run, without asking. It is the same job as `dplat-review` step 8, with Jaewon as the reviewer:
 
 ```bash
-ONCE=1 IDLE_HOURS=24 IDLE_REVIEWERS=dante01yoon IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
+ONCE=1 IDLE_HOURS=4 IDLE_REVIEWERS=dante01yoon IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
   SLACK_THREAD=C0C6X92KC0H/<the record's ts> SLACK_ME=<your Slack id> IDLE_SLACK_REVIEWERS=U0AG6QVE1L7 \
   ${CLAUDE_SKILL_DIR}/../watch-for-activity/scripts/watch-pr.sh <owner/repo> <n> <your-gh-login> 300
 ```
 
 The `SLACK_*` lines make it watch the review post's thread too, and need `SLACK_TOKEN` in the shell. If the script exits 3 straight away, the shell can't read Slack (always the case in a cloud thread today): start it again without the `SLACK_*` lines, and watch the thread with the connector as `watch-for-activity` describes under "Without a token".
 
-Run it with Bash `run_in_background: true`. When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`) even if the script watched it, and update the record's `slackSeen`. Then act as `dplat-review` step 8 says: report who said what in one line, fix what a review asks for (then step 9), bump an idle review (at most two idle bumps per round, recorded in `bumps`), and stop on merged, closed or approved. Otherwise start the job again with `IDLE_SINCE` set to the newest post, bump or reviewer reply.
+Run it with Bash `run_in_background: true`. When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`) even if the script watched it, and update the record's `slackSeen`. Then act as `dplat-review` step 8 says: report who said what in one line, fix what a review asks for (then step 9), bump a review that sat silent for 4 hours (only on a weekday between 08:00 and 20:00 NZ time, at most two idle bumps per PR, recorded in `bumps`; after the second, tell Willie in one line that the PR is still waiting), and stop on merged, closed or approved. Otherwise start the job again with `IDLE_SINCE` set to the newest post, bump or reviewer reply.
+
+**The thread that owns the PR runs the bumps.** No scheduled task does this. In a cloud thread the background job can't last 4 hours (a background command stops after 2 at most, and the container sleeps when the thread is idle), so also set a `send_later` check-in for the bump time: `IDLE_SINCE` plus 4 hours, moved to the next weekday 08:00 NZ time if it falls outside 08:00 to 20:00 Pacific/Auckland. When it wakes you, check GitHub and read the Slack thread, and bump if the reviewer is still silent. On a Mac, if the job reaches its time limit with nothing printed, start it again.
 
 Say in the report that the watch is running, with its background task id.
 
@@ -160,7 +162,7 @@ When Jaewon (or anyone) left feedback and you pushed changes for it, tell him, i
    <@U0AG6QVE1L7> addressed your feedback in <https://github.com/Comfy-Org/ComfyUI_frontend/pull/<n>/commits/<sha>|<short sha>>: <what changed>. Could you re-review? PTAL
    ```
 
-3. **Record it and restart the watch.** Add `{"kind": "fixes", "ts": "<reply ts>", "at": "<date -u +%Y-%m-%dT%H:%M:%SZ>"}` to the record's `bumps`, and start step 8's job again with `IDLE_SINCE` set to that time. A fixes bump starts a new round, so the two-idle-bump limit resets.
+3. **Record it and restart the watch.** Add `{"kind": "fixes", "ts": "<reply ts>", "at": "<date -u +%Y-%m-%dT%H:%M:%SZ>"}` to the record's `bumps`, and start step 8's job again with `IDLE_SINCE` set to that time. A fixes bump doesn't count toward the two idle bumps.
 
 **Finding the thread:** read the record. If it isn't there, search for the PR link with `slack_search_public_and_private` (`<owner>/<name>/pull/<n> in:<#C0C6X92KC0H>`), take the top-level message, and write the record. If the PR was posted to another channel before this skill moved, bump it where it was posted. If it was never posted, don't start a new top-level post; tell the user in one line.
 

@@ -11,9 +11,11 @@
 # Optional, all off by default:
 #   ONCE=1            exit after the first check that printed anything. Use it for a
 #                     background job that must end on the first real event.
-#   IDLE_HOURS=24     also report when the reviewer has said nothing for this long,
-#                     then exit. Needs IDLE_SINCE. Never fires on a Saturday or a
-#                     Sunday (UTC), on a draft, or while threads wait on you.
+#   IDLE_HOURS=4      also report when the reviewer has said nothing for this long,
+#                     then exit. Needs IDLE_SINCE. Fires only on a weekday between
+#                     IDLE_FROM and IDLE_TO o'clock in IDLE_TZ (default Mon-Fri
+#                     08:00-20:00 Pacific/Auckland), never on a draft or while
+#                     threads wait on you.
 #   IDLE_SINCE=<t>    when the clock starts: the review post or the last bump, as
 #                     YYYY-MM-DDTHH:MM:SSZ. Newer activity by the reviewer restarts it.
 #   IDLE_REVIEWERS=a,b  whose activity counts. Default: anyone but you and bots.
@@ -33,9 +35,20 @@ ONCE="${ONCE:-}"
 IDLE_HOURS="${IDLE_HOURS:-}"
 IDLE_SINCE="${IDLE_SINCE:-}"
 IDLE_REVIEWERS="${IDLE_REVIEWERS:-}"
+IDLE_TZ="${IDLE_TZ:-Pacific/Auckland}"
+IDLE_FROM="${IDLE_FROM:-8}"
+IDLE_TO="${IDLE_TO:-20}"
 SLACK_THREAD="${SLACK_THREAD:-}"
 SLACK_ME="${SLACK_ME:-}"
 IDLE_SLACK_REVIEWERS="${IDLE_SLACK_REVIEWERS:-}"
+
+in_bump_hours() {
+  local day hour
+  day=$(TZ="$IDLE_TZ" date +%u)
+  hour=$(TZ="$IDLE_TZ" date +%H)
+  hour=$((10#$hour))
+  [ "$day" -lt 6 ] && [ "$hour" -ge "$IDLE_FROM" ] && [ "$hour" -lt "$IDLE_TO" ]
+}
 
 if [ -n "$IDLE_HOURS" ] && [ -z "$IDLE_SINCE" ]; then
   echo "watch-pr.sh: IDLE_HOURS needs IDLE_SINCE (the post or last bump, YYYY-MM-DDTHH:MM:SSZ)" >&2
@@ -198,9 +211,10 @@ while true; do
   esac
 
   # Reviewer silence. Only while the ball is in their court: no threads waiting on
-  # you, not a draft, not yet decided. Weekends never fire; the hours still count,
-  # so a Friday post that ran out over the weekend fires on Monday (UTC).
-  if [ -n "$IDLE_HOURS" ] && [ "$printed" = 0 ] && [ "$(date -u +%u)" -lt 6 ] \
+  # you, not a draft, not yet decided. It fires only in bump hours (weekdays,
+  # IDLE_FROM to IDLE_TO in IDLE_TZ); the hours outside still count, so a review
+  # that ran out overnight or over the weekend fires at the next 08:00.
+  if [ -n "$IDLE_HOURS" ] && [ "$printed" = 0 ] && in_bump_hours \
      && [ "$(jq -r '.isDraft' <<<"$pr")" = "false" ] && [ "${threads:-0}" = "0" ]; then
     since=$(to_epoch "$IDLE_SINCE")
     if [ -n "$since" ]; then

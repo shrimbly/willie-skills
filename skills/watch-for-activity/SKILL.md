@@ -117,7 +117,7 @@ Pass it to `Monitor` as the `command`.
 
 Two opt-in modes, both env vars:
 - `ONCE=1` ends the script after the first check that printed anything. Run it with Bash `run_in_background: true` when one event should mean one notification, with no Monitor expiry to re-arm.
-- `IDLE_HOURS=24 IDLE_SINCE=<post or last bump, YYYY-MM-DDTHH:MM:SSZ> IDLE_REVIEWERS=<login>` also ends it with an `IDLE:` line when the reviewer has said nothing on GitHub for that long. It never fires at weekends (UTC), on a draft, or while threads wait on you. `dplat-review` step 8 uses it to bump a quiet review.
+- `IDLE_HOURS=4 IDLE_SINCE=<post or last bump, YYYY-MM-DDTHH:MM:SSZ> IDLE_REVIEWERS=<login>` also ends it with an `IDLE:` line when the reviewer has said nothing on GitHub for that long. It fires only on a weekday between 08:00 and 20:00 Pacific/Auckland (change with `IDLE_TZ`, `IDLE_FROM`, `IDLE_TO`), never on a draft or while threads wait on you. `dplat-review` and `fe-review` step 8 use it so the thread that owns the PR bumps a quiet review itself. No scheduled task bumps reviews.
 
 Bookkeeping bots are skipped — the link-back, the deploy URL. They re-comment on
 their own schedule and none of it is addressed to you. Review bots are
@@ -181,9 +181,11 @@ secrets would let a cloud thread use the token path instead. Until then:
    reactions not in the list, by someone else. Then update `slackSeen`.
 3. **In a cloud thread, add spaced check-ins.** Set a `send_later` reminder 1 hour
    after the post, then 2 hours after that, then 4. A check-in that finds nothing
-   new ends with no reply. Stop scheduling once the review is answered, the PR
-   leaves review, or after the third, when the `IDLE` fire and the Review bump
-   task cover it.
+   new ends with no reply. Stop scheduling once the review is answered or the PR
+   leaves review. After the third, keep only the check-in at the bump time
+   (`IDLE_SINCE` plus 4 hours, moved into the next weekday 08:00 to 20:00 NZ
+   window): the background job can't outlive the container, so that check-in is
+   what makes the owning thread bump.
 
 The trade-off: a Slack reply is noticed at the next wake, which can be hours
 late, rather than within five minutes, and every check-in costs a model turn,
