@@ -113,22 +113,26 @@ This is the `watch-for-activity` skill's PR watch. Start one background job stra
 
 ```bash
 ONCE=1 IDLE_HOURS=24 IDLE_REVIEWERS=vqt123 IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
+  SLACK_THREAD=C0C0MGTE78F/<the record's ts> SLACK_ME=<your Slack id> IDLE_SLACK_REVIEWERS=U0BU2EQ3GG1 \
   ${CLAUDE_SKILL_DIR}/../watch-for-activity/scripts/watch-pr.sh <owner/repo> <n> <your-gh-login> 300
 ```
+
+The `SLACK_*` lines make it watch the review post's thread too. They need `SLACK_TOKEN` in the shell. Willie's Slack id is `U0ANMTLVDA6`. If the script exits 3 straight away, the shell can't read Slack (always the case in a cloud thread today): start it again without the `SLACK_*` lines, and watch the thread with the connector as `watch-for-activity` describes under "Without a token" (seed `slackSeen` in the record, read the thread on every wake, spaced check-ins in a cloud thread).
 
 Run it with Bash `run_in_background: true`. It ends on the first of these:
 - a new comment or review thread;
 - a review decision;
 - red CI or a merge conflict;
 - the PR merged or closed;
-- `IDLE`: 24 hours with no comment or review from the reviewer on GitHub. It doesn't fire on a Saturday or Sunday (UTC), on a draft, or while threads wait on you.
+- a reply or reaction by someone else in the Slack thread, when it can read Slack;
+- `IDLE`: 24 hours with no comment or review from the reviewer on GitHub (or in the Slack thread, when it can read Slack). It doesn't fire on a Saturday or Sunday (UTC), on a draft, or while threads wait on you.
 
-When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`), then act:
+When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`) even if the script watched it, and update the record's `slackSeen`. Then act:
 - **Someone replied or reviewed, here or in Slack:** say in one line who said what. If it asks for a change, handle it the same way as step 6: fix, reply, and resolve bot threads only. Then bump the reviewer (step 9).
 - **`IDLE`, and the Slack thread is quiet too:** bump the reviewer (below).
 - **Merged, closed or approved:** stop.
 
-After anything else, start the job again, with `IDLE_SINCE` set to the newest post, bump or reviewer reply. A reply in Slack restarts the clock as well, because the script sees only GitHub.
+After anything else, start the job again, with `IDLE_SINCE` set to the newest post, bump or reviewer reply. Count a reviewer reply in Slack too: without a token the script sees only GitHub.
 
 **The inactivity bump:** one line in the thread, with `slack_send_message` (`thread_ts` = the post's `ts`), mentioning the reviewer:
 
