@@ -101,7 +101,7 @@ Asking for review means the PR is ready for review. If the PR is a draft, run `g
 
 The user asking for this skill counts as approval to post. Send one `slack_send_message` per PR to `C0C0MGTE78F`, then report each message link back in one line per PR. If the user asked to preview first, use `slack_send_message_draft` instead.
 
-**Record the post,** so step 9 and the Review bump task can find its thread later from any session or workspace. Write `<owner>-<name>-<n>.json` (for example `Comfy-Org-platform-1780.json`) to `~/.claude/superset-orchestrator/reviews/` on a Mac, and to `/mnt/project-files/reviews/` in a cloud project thread:
+**Record the post,** so steps 8 and 9 can find its thread later from any session or workspace. Write `<owner>-<name>-<n>.json` (for example `Comfy-Org-platform-1780.json`) to `~/.claude/superset-orchestrator/reviews/` on a Mac, and to `/mnt/project-files/reviews/` in a cloud project thread:
 
 ```json
 {"repo": "Comfy-Org/platform", "pr": 1780, "channel": "C0C0MGTE78F", "ts": "<message ts>", "permalink": "<message link>", "reviewers": [{"slack": "U0BU2EQ3GG1", "github": "vqt123"}], "postedAt": "<date -u +%Y-%m-%dT%H:%M:%SZ>", "bumps": []}
@@ -112,7 +112,7 @@ The user asking for this skill counts as approval to post. Send one `slack_send_
 This is the `watch-for-activity` skill's PR watch. Start one background job straight after the post, in the same run, without asking. It says nothing until something real happens, then ends, so each event is one notification. Don't use a `CronCreate` job or a Monitor: every cron fire and every Monitor expiry or re-arm starts a visible turn, and a quiet day turns into a hundred "nothing new" messages.
 
 ```bash
-ONCE=1 IDLE_HOURS=24 IDLE_REVIEWERS=vqt123 IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
+ONCE=1 IDLE_HOURS=4 IDLE_REVIEWERS=vqt123 IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
   SLACK_THREAD=C0C0MGTE78F/<the record's ts> SLACK_ME=<your Slack id> IDLE_SLACK_REVIEWERS=U0BU2EQ3GG1 \
   ${CLAUDE_SKILL_DIR}/../watch-for-activity/scripts/watch-pr.sh <owner/repo> <n> <your-gh-login> 300
 ```
@@ -125,7 +125,9 @@ Run it with Bash `run_in_background: true`. It ends on the first of these:
 - red CI or a merge conflict;
 - the PR merged or closed;
 - a reply or reaction by someone else in the Slack thread, when it can read Slack;
-- `IDLE`: 24 hours with no comment or review from the reviewer on GitHub (or in the Slack thread, when it can read Slack). It doesn't fire on a Saturday or Sunday (UTC), on a draft, or while threads wait on you.
+- `IDLE`: 4 hours with no comment or review from the reviewer on GitHub (or in the Slack thread, when it can read Slack). It fires only on a weekday between 08:00 and 20:00 NZ time (Pacific/Auckland), never on a draft or while threads wait on you. Hours outside that window still count, so a review that ran out overnight fires at 08:00.
+
+**The thread that owns the PR runs the bumps.** No scheduled task does this. In a cloud thread the background job can't last 4 hours (a background command stops after 2 at most, and the container sleeps when the thread is idle), so also set a `send_later` check-in for the bump time: `IDLE_SINCE` plus 4 hours, moved to the next weekday 08:00 NZ time if it falls outside 08:00 to 20:00 Pacific/Auckland. When it wakes you, check GitHub and read the Slack thread, and bump if the reviewer is still silent. On a Mac, if the job reaches its time limit with nothing printed, start it again.
 
 When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`) even if the script watched it, and update the record's `slackSeen`. Then act:
 - **Someone replied or reviewed, here or in Slack:** say in one line who said what. If it asks for a change, handle it the same way as step 6: fix, reply, and resolve bot threads only. Then bump the reviewer (step 9).
@@ -141,7 +143,8 @@ After anything else, start the job again, with `IDLE_SINCE` set to the newest po
 ```
 
 Add one short clause only if something changed since they last looked, such as a merged parent PR.
-- At most two inactivity bumps per round. After the second, don't bump again. Tell the user in one line, and let them chase it.
+- Bump only on a weekday between 08:00 and 20:00 NZ time.
+- At most two inactivity bumps per PR, counting every `idle` entry in the record's `bumps`. After the second, don't bump again. Tell Willie in one line that the PR is still waiting on the reviewer, with its link, and let him chase it.
 - Add each bump to the record's `bumps`: `{"kind": "idle", "ts": "<reply ts>", "at": "<date -u +%Y-%m-%dT%H:%M:%SZ>"}`.
 - Don't bump if the user said they'll ping the reviewer, or if the PR went back to draft.
 
@@ -173,7 +176,7 @@ Not per commit, and not for fixes that answer only the Cursor bot.
 
    Add the preview line again only if the preview link changed.
 
-3. **Record it and restart the watch.** Add `{"kind": "fixes", "ts": "<reply ts>", "at": "<date -u +%Y-%m-%dT%H:%M:%SZ>"}` to the record's `bumps`. Start step 8's job again, with `IDLE_SINCE` set to that time. A fixes bump starts a new round, so the two-bump limit resets.
+3. **Record it and restart the watch.** Add `{"kind": "fixes", "ts": "<reply ts>", "at": "<date -u +%Y-%m-%dT%H:%M:%SZ>"}` to the record's `bumps`. Start step 8's job again, with `IDLE_SINCE` set to that time. A fixes bump doesn't count toward the two inactivity bumps.
 
 **Finding the thread:**
 1. Read `~/.claude/superset-orchestrator/reviews/<owner>-<name>-<n>.json`.
@@ -192,7 +195,7 @@ Say in the report that you reassigned and bumped them, with the reply's link.
 - Don't post a PR that is still a draft. Step 6 marks it ready first.
 - Don't post without assigning Vinh and tagging him.
 - Don't push fixes for a person's review and stop there. Reassign them and bump them in the thread (step 9).
-- Don't let a review post go quiet for days. Step 8's watch bumps the reviewer after 24 hours, twice at most.
+- Don't let a review post go quiet. Step 8 bumps the reviewer after 4 hours of silence, in NZ weekday hours, twice per PR at most. This thread does it; no scheduled task will.
 - Don't watch with a `CronCreate` job or a Monitor, and never post "nothing new".
 - Don't paste the PR body, checklists or test counts. The PR holds those.
 - Never include secrets, tokens or env values, even from the PR body.
