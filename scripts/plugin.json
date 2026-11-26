@@ -1,7 +1,7 @@
 {
   "name": "willie-skills",
   "displayName": "Willie's Developer Platform skills",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Review, Cursor review, implementation, feedback triage and watch skills for Comfy-Org Developer Platform work.",
   "author": {
     "name": "Willie"

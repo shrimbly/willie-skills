@@ -17,6 +17,11 @@
 #   IDLE_SINCE=<t>    when the clock starts: the review post or the last bump, as
 #                     YYYY-MM-DDTHH:MM:SSZ. Newer activity by the reviewer restarts it.
 #   IDLE_REVIEWERS=a,b  whose activity counts. Default: anyone but you and bots.
+#   SLACK_THREAD=<channel-id>/<ts>  also watch the PR's Slack review thread: new
+#                     replies and reactions by others. Needs SLACK_TOKEN and SLACK_ME
+#                     (your Slack user id). Exits 3 at once if it cannot read the
+#                     thread, so you never trust a Slack watch that can't speak.
+#   IDLE_SLACK_REVIEWERS=U1,U2  Slack ids whose replies restart the IDLE clock.
 
 set -uo pipefail
 
@@ -28,6 +33,9 @@ ONCE="${ONCE:-}"
 IDLE_HOURS="${IDLE_HOURS:-}"
 IDLE_SINCE="${IDLE_SINCE:-}"
 IDLE_REVIEWERS="${IDLE_REVIEWERS:-}"
+SLACK_THREAD="${SLACK_THREAD:-}"
+SLACK_ME="${SLACK_ME:-}"
+IDLE_SLACK_REVIEWERS="${IDLE_SLACK_REVIEWERS:-}"
 
 if [ -n "$IDLE_HOURS" ] && [ -z "$IDLE_SINCE" ]; then
   echo "watch-pr.sh: IDLE_HOURS needs IDLE_SINCE (the post or last bump, YYYY-MM-DDTHH:MM:SSZ)" >&2
@@ -39,8 +47,21 @@ fi
 # something nobody said. Review bots are deliberately NOT here: CodeRabbit and
 # friends post findings you have to answer. Override with IGNORE_LOGINS.
 IGNORE_LOGINS="${IGNORE_LOGINS:-vercel[bot],linear-code[bot],github-actions[bot]}"
-ignored_jq=$(printf '%s' "$IGNORE_LOGINS" | jq -R 'split(",")')
-reviewers_jq=$(printf '%s' "$IDLE_REVIEWERS" | jq -R 'split(",") | map(select(length>0))')
+ignored_jq=$(jq -nc --arg s "$IGNORE_LOGINS" '$s | split(",") | map(select(length>0))')
+reviewers_jq=$(jq -nc --arg s "$IDLE_REVIEWERS" '$s | split(",") | map(select(length>0))')
+
+slack_channel=""
+slack_ts=""
+if [ -n "$SLACK_THREAD" ]; then
+  slack_channel="${SLACK_THREAD%%/*}"
+  slack_ts="${SLACK_THREAD##*/}"
+  if [ -z "$SLACK_ME" ] || [ "$slack_channel" = "$SLACK_THREAD" ]; then
+    echo "watch-pr.sh: SLACK_THREAD is <channel-id>/<ts> and needs SLACK_ME (your Slack user id)" >&2
+    exit 2
+  fi
+  . "$(dirname "$0")/slack-thread.sh"
+  slack_preflight "$slack_channel" "$slack_ts" "watch-pr.sh" || exit 3
+fi
 
 printed=0
 say() { printf '%s\n' "$*"; printed=1; }
@@ -95,6 +116,11 @@ prev_decision=$(gh pr view "$PR" --repo "$REPO" --json reviewDecision --jq '.rev
 prev_comments=$(comment_count || echo 0)
 prev_threads=$(threads_awaiting_me || echo 0)
 prev_conflict=""
+prev_slack=""
+if [ -n "$slack_channel" ]; then
+  slack_thread_snapshot "$slack_channel" "$slack_ts" || exit 3
+  prev_slack=$SLACK_SNAPSHOT
+fi
 
 while true; do
   sleep "$INTERVAL"
@@ -143,6 +169,23 @@ while true; do
     prev_comments=$comments
   fi
 
+  if [ -n "$slack_channel" ]; then
+    slack_thread_snapshot "$slack_channel" "$slack_ts"
+    case $? in
+      0)
+        slack_now=$SLACK_SNAPSHOT
+        slack_new=$(slack_diff "$prev_slack" "$slack_now" "$SLACK_ME" "$slack_ts")
+        [ -n "$slack_new" ] && say "$slack_new"
+        prev_slack=$slack_now ;;
+      1) ;;
+      *)
+        if [ "$SLACK_ERROR" != "ratelimited" ]; then
+          say "Slack watch stopped: Slack said '$SLACK_ERROR'. GitHub is still watched; check the thread with the Slack connector"
+          slack_channel=""
+        fi ;;
+    esac
+  fi
+
   threads=$(threads_awaiting_me) || threads=$prev_threads
   if [ -n "$threads" ] && [ "$threads" != "$prev_threads" ] && [ "$threads" != "0" ]; then
     say "review threads awaiting you: $threads"
@@ -166,9 +209,17 @@ while true; do
         l=$(to_epoch "$last")
         [ -n "$l" ] && [ "$l" -gt "$since" ] && since=$l
       fi
+      if [ -n "$slack_channel" ] && [ -n "$IDLE_SLACK_REVIEWERS" ]; then
+        l=$(slack_last_reviewer_reply "$prev_slack" "$IDLE_SLACK_REVIEWERS" "$slack_ts")
+        [ -n "$l" ] && [ "$l" -gt "$since" ] && since=$l
+      fi
       now=$(date -u +%s)
       if [ $(( now - since )) -ge $(( IDLE_HOURS * 3600 )) ]; then
-        say "IDLE: no word from ${IDLE_REVIEWERS:-the reviewer} on GitHub for $(( (now - since) / 3600 ))h. Read the Slack thread, then bump"
+        if [ -n "$slack_channel" ]; then
+          say "IDLE: no word from ${IDLE_REVIEWERS:-the reviewer} on GitHub or in the Slack thread for $(( (now - since) / 3600 ))h. Bump"
+        else
+          say "IDLE: no word from ${IDLE_REVIEWERS:-the reviewer} on GitHub for $(( (now - since) / 3600 ))h. Read the Slack thread, then bump"
+        fi
         break
       fi
     fi
