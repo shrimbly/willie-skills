@@ -133,10 +133,13 @@ Start the `watch-for-activity` watch straight after the post, in the same run, w
 
 ```bash
 ONCE=1 IDLE_HOURS=24 IDLE_REVIEWERS=dante01yoon IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
+  SLACK_THREAD=C0C6X92KC0H/<the record's ts> SLACK_ME=<your Slack id> IDLE_SLACK_REVIEWERS=U0AG6QVE1L7 \
   ${CLAUDE_SKILL_DIR}/../watch-for-activity/scripts/watch-pr.sh <owner/repo> <n> <your-gh-login> 300
 ```
 
-Run it with Bash `run_in_background: true`. When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`), then act as `dplat-review` step 8 says: report who said what in one line, fix what a review asks for (then step 9), bump an idle review (at most two idle bumps per round, recorded in `bumps`), and stop on merged, closed or approved. Otherwise start the job again with `IDLE_SINCE` set to the newest post, bump or reviewer reply.
+The `SLACK_*` lines make it watch the review post's thread too, and need `SLACK_TOKEN` in the shell. If the script exits 3 straight away, the shell can't read Slack (always the case in a cloud thread today): start it again without the `SLACK_*` lines, and watch the thread with the connector as `watch-for-activity` describes under "Without a token".
+
+Run it with Bash `run_in_background: true`. When it ends, read the Slack thread (`slack_read_thread`, the record's `channel` and `ts`) even if the script watched it, and update the record's `slackSeen`. Then act as `dplat-review` step 8 says: report who said what in one line, fix what a review asks for (then step 9), bump an idle review (at most two idle bumps per round, recorded in `bumps`), and stop on merged, closed or approved. Otherwise start the job again with `IDLE_SINCE` set to the newest post, bump or reviewer reply.
 
 Say in the report that the watch is running, with its background task id.
 
