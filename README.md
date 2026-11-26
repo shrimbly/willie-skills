@@ -9,7 +9,7 @@ Willie's Claude Code skills for Comfy-Org Developer Platform work, kept in one r
 | `fe-review` | The same for ComfyUI_frontend PRs and #frontend-code-reviews. |
 | `cursor-review` | Run the Cursor review bot on a PR and work its findings to clean. |
 | `feedback-triage` | Turn a burst of raw feedback into a reviewed set of tickets, deduped against the tracker and open PRs. |
-| `watch-for-activity` | Watch a PR, CI run or deploy and report only real changes. Provides `watch-pr.sh`. |
+| `watch-for-activity` | Watch a PR, its Slack review thread, a CI run or a deploy, and report only real changes. Provides `watch-pr.sh` and `watch-slack.sh`. |
 
 ## How Claude Code finds them
 
@@ -49,4 +49,5 @@ These still assume Willie's Mac. They were left as they are, not rewritten.
 - **Review records.** `dplat-review` writes `~/.claude/superset-orchestrator/reviews/<owner>-<name>-<n>.json` when it posts, and reads it in the follow-up step. In a cloud session that file is lost when the container goes, so a later thread cannot find the Slack thread from it. It has to search Slack instead.
 - **design-os.** `superset-implementer` reads `~/Dev/design-os`. In a cloud session that repo is at the project's clone path instead, if it is attached.
 - **Slack and Linear.** The review skills post to Slack and read Linear through connectors. A session without those connectors cannot do those steps.
-- **`gh`, `jq`.** Every script needs `gh` signed in and `jq` on the PATH.
+- **Slack from a shell.** `watch-pr.sh` and `watch-slack.sh` read a Slack thread only with a token in `SLACK_TOKEN`, through the Web API. Cloud threads have no token and their network blocks `slack.com`, so there they check the thread with the Slack connector when they wake instead (see `watch-for-activity`).
+- **`gh`, `jq`, `curl`.** Every script needs `gh` signed in and `jq` on the PATH; the Slack watch also needs `curl`.

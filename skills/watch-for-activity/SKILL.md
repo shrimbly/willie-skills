@@ -5,7 +5,7 @@ description: |
   run, a deploy, a queue — and get told when it actually changes, not on a timer.
   Arms a persistent background monitor that reports only differences, filters out
   your own activity, and covers every terminal state so silence never reads as
-  success.
+  success. Also watches a PR's Slack review thread for replies and reactions.
   Use when asked to "poll for review", "watch the PR", "keep an eye on CI", "let
   me know when it's approved", "check on the deploy", "wait for X and then do Y",
   or whenever you are about to wait on something outside your control.
@@ -123,6 +123,73 @@ Bookkeeping bots are skipped — the link-back, the deploy URL. They re-comment 
 their own schedule and none of it is addressed to you. Review bots are
 deliberately kept, because CodeRabbit and its like post findings you must answer.
 Change the list with `IGNORE_LOGINS="a[bot],b[bot]"`.
+
+## Watching the Slack review thread too
+
+A review request lives in two places: the PR and its post in a Slack review
+channel. Reviewers often answer in Slack, or just react with :eyes: or
+:white_check_mark:, and GitHub shows none of it. A watch that reads only GitHub
+sits mute through all of that, so watch the thread as well.
+
+You need the thread's channel id and `ts`. They are in the review record that
+`dplat-review` writes when it posts (`channel`, `ts`), or in the post's link:
+`.../archives/<channel>/p<ts without the dot>`.
+
+The same rules apply: seed first, report only replies and reactions by someone
+else, skip your own messages, and never heartbeat. Messages Claude posts for you
+through the Slack connector are sent as your user ("Sent using Claude"), so
+skipping your own Slack id skips those too.
+
+### With a token: one background job for both
+
+A shell loop can read Slack only through the Web API, with a token in
+`SLACK_TOKEN`: a user token (`xoxp-`) or bot token (`xoxb-`) with
+`channels:history`, `groups:history` and `reactions:read` (`users:read` turns ids
+into names). Add the thread to the PR watch:
+
+```bash
+SLACK_THREAD=<channel-id>/<ts> SLACK_ME=<your-slack-id> IDLE_SLACK_REVIEWERS=<their-slack-id> \
+  ${CLAUDE_SKILL_DIR}/scripts/watch-pr.sh <owner/repo> <pr-number> <your-github-login>
+```
+
+It then also fires on a new reply or reaction in the thread by anyone but you and
+bots, and a reply from `IDLE_SLACK_REVIEWERS` restarts the `IDLE` clock, so
+`IDLE` means quiet on GitHub and in Slack. `scripts/watch-slack.sh <channel-id>
+<ts> <your-slack-id>` watches a thread on its own, with the same `ONCE=1`.
+
+Both check the token before they start. If it is missing, cannot reach Slack or
+cannot read the thread, they **exit 3** with the reason on stderr, before
+watching anything. Don't drop `SLACK_THREAD` and carry on as if Slack were
+covered: use the connector, below. If Slack starts refusing mid-watch, the PR
+watch says `Slack watch stopped` once and keeps watching GitHub.
+
+### Without a token: the Slack connector, on wake
+
+The Slack connector (`slack_read_thread`) is an MCP tool. Only you can call it; a
+shell loop cannot. Cloud threads are in this case today: the environment's
+network policy blocks `slack.com` (the proxy answers 403), and it holds no Slack
+token. Adding `slack.com` to the allowlist and a token to the environment's
+secrets would let a cloud thread use the token path instead. Until then:
+
+1. **Seed when you arm the PR watch.** Read the thread with `slack_read_thread`
+   and keep the newest reply's `ts` and the reactions you saw. Put them in the
+   review record as `"slackSeen": {"ts": "<newest reply ts>", "reactions":
+   ["white_check_mark U0BU2EQ3GG1", ...]}`, so a later session starts from them
+   rather than announcing old replies.
+2. **Read it again every time you wake for this PR**: the PR watch firing, `IDLE`,
+   the person writing to you. Report only replies newer than `slackSeen.ts` and
+   reactions not in the list, by someone else. Then update `slackSeen`.
+3. **In a cloud thread, add spaced check-ins.** Set a `send_later` reminder 1 hour
+   after the post, then 2 hours after that, then 4. A check-in that finds nothing
+   new ends with no reply. Stop scheduling once the review is answered, the PR
+   leaves review, or after the third, when the `IDLE` fire and the Review bump
+   task cover it.
+
+The trade-off: a Slack reply is noticed at the next wake, which can be hours
+late, rather than within five minutes, and every check-in costs a model turn,
+where a shell poll costs nothing. Reading the thread before any bump (step 2)
+keeps the costly mistake, bumping someone who already answered in Slack, from
+happening.
 
 ### Two traps this script already fell into
 
