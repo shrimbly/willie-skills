@@ -1,11 +1,13 @@
 ---
 name: dplat-review
-description: "Post a review request for one or more pull requests to the #pillar3-dev-platform-code-reviews Slack channel, in the channel's convention, with the PR link, the Linear ticket link, and a preview link pointing at the page the change affects. Waits for the automated Cursor review and clears its findings before the PR is marked ready and before anything is posted. For ComfyUI_frontend PRs use fe-review instead. Use when asked to \"ask for review\", \"post to the code reviews channel\", \"send this PR for review\", \"/dplat-review PR-or-ticket\", or after opening a dev-platform PR that needs a reviewer."
+description: "Post a review request for one or more pull requests to Vinh in the #epd-comfy-platform-code-reviews Slack channel, in the channel's convention, with the PR link, the Linear ticket link, and a preview link pointing at the page the change affects. Waits for the automated Cursor review and clears its findings before the PR is marked ready and before anything is posted. Assigns the PR to Vinh, tags him in the post, watches the PR, and after review fixes reassigns him and bumps the Slack thread. For ComfyUI_frontend PRs use fe-review instead. Use when asked to \"ask for review\", \"post to the code reviews channel\", \"send this PR for review\", \"/dplat-review PR-or-ticket\", or after opening a dev-platform PR that needs a reviewer."
 ---
 
 # dplat-review
 
-Post a review request for a dev-platform PR to **#pillar3-dev-platform-code-reviews** (channel id `C0C0MGTE78F`).
+Post a review request for a dev-platform PR to **#epd-comfy-platform-code-reviews** (channel id `C0C0MGTE78F`; it was #pillar3-dev-platform-code-reviews, same id), assigned to Vinh and tagging him.
+
+The order is fixed: **Cursor review → clean-up → ready for review → assign → Slack → watch.**
 
 Input: one or more PR numbers or ticket ids (e.g. `1177`, `DPLAT-1818`), optionally a repo (default `Comfy-Org/platform`) and reviewers. One Slack message per PR.
 
@@ -45,15 +47,18 @@ Verify the link returns 200 with `curl -s -o /dev/null -w "%{http_code}"` before
 
 Add a line `Preview: <url> (how to see it)` after the PTAL line.
 
-## 4. Reviewers
+## 4. Reviewer: Vinh
 
-Use the reviewers the user names. If none are named, default to Vinh (Slack `<@U0BU2EQ3GG1>`, GitHub `vqt123`) for every dev-platform PR, UI or not. Don't name Pablo unless the user asks for him. Look up any other name with `slack_search_users` and mention by id: `<@Uxxxx>`. Never guess an id.
+The reviewer is Vinh (Slack `<@U0BU2EQ3GG1>`, GitHub `vqt123`) for every dev-platform PR, UI or not. Don't ask. Tag him in every post. Don't name Pablo unless the user asks for him. If the user names more reviewers, tag them as well, after Vinh. If the user names someone instead of Vinh, use them in his place in steps 4, 7, 8 and 9. Look up any other name with `slack_search_users` and mention by id: `<@Uxxxx>`. Never guess an id.
 
-On GitHub, request the same person after marking the PR ready (step 6), with REST, because the `gh pr edit` wrapper hits a hidden rate limit:
+On GitHub, after marking the PR ready (step 6) and before posting, **assign the PR to Vinh** and request his review, with REST, because the `gh pr edit` wrapper hits a hidden rate limit. The assignee call adds him and leaves any other assignee alone:
 
 ```bash
+gh api -X POST repos/<owner>/<name>/issues/<n>/assignees -f 'assignees[]=vqt123'
 gh api -X POST repos/<owner>/<name>/pulls/<n>/requested_reviewers -f 'reviewers[]=vqt123'
 ```
+
+If the review request is refused, keep the assignment and the Slack tag, and say so in the report.
 
 The repo's assign-reviewers workflow adds its own assignees from `.github/reviewers.yml` on ready. Leave them alone. If `PabloWiedemann` shows up as a requested reviewer and the user didn't ask for him, remove him (`-X DELETE`, same endpoint).
 
@@ -96,7 +101,7 @@ Asking for review means the PR is ready for review. If the PR is a draft, run `g
 
 The user asking for this skill counts as approval to post. Send one `slack_send_message` per PR to `C0C0MGTE78F`, then report each message link back in one line per PR. If the user asked to preview first, use `slack_send_message_draft` instead.
 
-**Record the post,** so step 9 can find its thread later from any session or workspace. Write `~/.claude/superset-orchestrator/reviews/<owner>-<name>-<n>.json` (for example `Comfy-Org-platform-1780.json`):
+**Record the post,** so step 9 and the Review bump task can find its thread later from any session or workspace. Write `<owner>-<name>-<n>.json` (for example `Comfy-Org-platform-1780.json`) to `~/.claude/superset-orchestrator/reviews/` on a Mac, and to `/mnt/project-files/reviews/` in a cloud project thread:
 
 ```json
 {"repo": "Comfy-Org/platform", "pr": 1780, "channel": "C0C0MGTE78F", "ts": "<message ts>", "permalink": "<message link>", "reviewers": [{"slack": "U0BU2EQ3GG1", "github": "vqt123"}], "postedAt": "<date -u +%Y-%m-%dT%H:%M:%SZ>", "bumps": []}
@@ -104,7 +109,7 @@ The user asking for this skill counts as approval to post. Send one `slack_send_
 
 ## 8. Watch the PR quietly, and bump the reviewer when it goes quiet
 
-Start one background job straight after the post, in the same run, without asking. It says nothing until something real happens, then ends, so each event is one notification. Don't use a `CronCreate` job or a Monitor: every cron fire and every Monitor expiry or re-arm starts a visible turn, and a quiet day turns into a hundred "nothing new" messages.
+This is the `watch-for-activity` skill's PR watch. Start one background job straight after the post, in the same run, without asking. It says nothing until something real happens, then ends, so each event is one notification. Don't use a `CronCreate` job or a Monitor: every cron fire and every Monitor expiry or re-arm starts a visible turn, and a quiet day turns into a hundred "nothing new" messages.
 
 ```bash
 ONCE=1 IDLE_HOURS=24 IDLE_REVIEWERS=vqt123 IDLE_SINCE=<the newest of postedAt and the last bump's "at"> \
@@ -138,9 +143,9 @@ Add one short clause only if something changed since they last looked, such as a
 
 Say in the report that the watch is running, with its background task id.
 
-## 9. When fixes land, bump the reviewer in the thread
+## 9. When fixes land, reassign Vinh and bump the thread
 
-Nothing tells a reviewer their feedback was addressed. GitHub doesn't re-request on a push, and Vinh works from the Slack thread. So whoever pushes the fixes for a person's review (on GitHub or in the thread) bumps that person, in the same run, without asking.
+Nothing tells a reviewer their feedback was addressed. GitHub doesn't re-request on a push, and Vinh works from the Slack thread. So whoever pushes the fixes for a person's review (on GitHub or in the thread) reassigns that person and bumps them in the thread, in the same run, without asking.
 
 **When:** once per round of fixes, after all three of these are true:
 - every one of that person's comments has a one-line reply;
@@ -149,16 +154,17 @@ Nothing tells a reviewer their feedback was addressed. GitHub doesn't re-request
 
 Not per commit, and not for fixes that answer only the Cursor bot.
 
-1. **Re-request on GitHub,** with REST. A POST re-requests someone who already reviewed:
+1. **Assign the PR to Vinh again,** with REST. Remove and re-add him, so GitHub sends a fresh assignment even when he is still assigned:
 
    ```bash
-   gh api -X POST repos/<owner>/<name>/pulls/<n>/requested_reviewers -f 'reviewers[]=vqt123'
+   gh api -X DELETE repos/<owner>/<name>/issues/<n>/assignees -f 'assignees[]=vqt123'
+   gh api -X POST repos/<owner>/<name>/issues/<n>/assignees -f 'assignees[]=vqt123'
    ```
 
-2. **Reply in the review post's thread,** with `slack_send_message` (channel `C0C0MGTE78F`, `thread_ts` = the post's `ts`). Mention the reviewer, link the head commit, and say what changed in at most three short clauses:
+2. **Reply in the review post's thread,** with `slack_send_message` (channel `C0C0MGTE78F`, `thread_ts` = the post's `ts`), asking for a re-review. Mention the reviewer, link the head commit, and say what changed in at most three short clauses:
 
    ```
-   <@U0BU2EQ3GG1> addressed your feedback in <https://github.com/Comfy-Org/platform/pull/1780/commits/<sha>|<short sha>>: <what changed>. PTAL
+   <@U0BU2EQ3GG1> addressed your feedback in <https://github.com/Comfy-Org/platform/pull/1780/commits/<sha>|<short sha>>: <what changed>. Could you re-review? PTAL
    ```
 
    Add the preview line again only if the preview link changed.
@@ -167,20 +173,21 @@ Not per commit, and not for fixes that answer only the Cursor bot.
 
 **Finding the thread:**
 1. Read `~/.claude/superset-orchestrator/reviews/<owner>-<name>-<n>.json`.
-2. If it isn't there, search the channel for the PR link: `slack_search_public_and_private` with `<owner>/<name>/pull/<n> in:<#C0C0MGTE78F>`. Take the top-level message, and write the record for next time.
+2. If it isn't there, check the other location (Mac or `/mnt/project-files/reviews/`), then search the channel for the PR link: `slack_search_public_and_private` with `<owner>/<name>/pull/<n> in:<#C0C0MGTE78F>`. Take the top-level message, and write the record for next time.
 3. If the PR was never posted, don't start a new top-level post. Tell the user in one line.
 
 **Don't bump when:**
 - the reviewer approved and asked for nothing;
 - the user said they'll ping the reviewer themselves.
 
-Say in the report that you bumped them, with the reply's link.
+Say in the report that you reassigned and bumped them, with the reply's link.
 
 ## Don'ts
 
 - Don't post, or mark ready, before the Cursor review has run and its findings are answered. Whether a fix round needs another pass depends on the risk (step 5).
 - Don't post a PR that is still a draft. Step 6 marks it ready first.
-- Don't push fixes for a person's review and stop there. Bump them in the thread (step 9).
+- Don't post without assigning Vinh and tagging him.
+- Don't push fixes for a person's review and stop there. Reassign them and bump them in the thread (step 9).
 - Don't let a review post go quiet for days. Step 8's watch bumps the reviewer after 24 hours, twice at most.
 - Don't watch with a `CronCreate` job or a Monitor, and never post "nothing new".
 - Don't paste the PR body, checklists or test counts. The PR holds those.

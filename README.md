@@ -5,8 +5,8 @@ Willie's Claude Code skills for Comfy-Org Developer Platform work, kept in one r
 | Skill | What it does |
 | --- | --- |
 | `superset-implementer` | The contract for an implementation agent: one brief, one branch, one draft PR, then review fixes until merge. |
-| `dplat-review` | Get a platform PR reviewed: facts, Cursor pass, the post for #pillar3-dev-platform-code-reviews, the follow-up. |
-| `fe-review` | The same for ComfyUI_frontend PRs and #frontend-code-reviews. |
+| `dplat-review` | Get a platform PR reviewed: facts, Cursor pass, the post to Vinh in #epd-comfy-platform-code-reviews, the watch and the re-review bump. |
+| `fe-review` | The same for ComfyUI_frontend PRs, to Jaewon in #jaewon-requests. |
 | `cursor-review` | Run the Cursor review bot on a PR and work its findings to clean. |
 | `feedback-triage` | Turn a burst of raw feedback into a reviewed set of tickets, deduped against the tracker and open PRs. |
 | `watch-for-activity` | Watch a PR, CI run or deploy and report only real changes. Provides `watch-pr.sh`. |
