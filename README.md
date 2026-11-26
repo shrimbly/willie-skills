@@ -5,8 +5,8 @@ Willie's Claude Code skills for Comfy-Org Developer Platform work, kept in one r
 | Skill | What it does |
 | --- | --- |
 | `superset-implementer` | The contract for an implementation agent: one brief, one branch, one draft PR, then review fixes until merge. |
-| `dplat-review` | Get a platform PR reviewed: facts, Cursor pass, the post for #pillar3-dev-platform-code-reviews, the follow-up. |
-| `fe-review` | The same for ComfyUI_frontend PRs and #frontend-code-reviews. |
+| `dplat-review` | Get a platform PR reviewed: facts, Cursor pass, the post to Vinh in #epd-comfy-platform-code-reviews, the watch and the re-review bump. |
+| `fe-review` | The same for ComfyUI_frontend PRs, to Jaewon in #jaewon-requests. |
 | `cursor-review` | Run the Cursor review bot on a PR and work its findings to clean. |
 | `feedback-triage` | Turn a burst of raw feedback into a reviewed set of tickets, deduped against the tracker and open PRs. |
 | `watch-for-activity` | Watch a PR, its Slack review thread, a CI run or a deploy, and report only real changes. Provides `watch-pr.sh` and `watch-slack.sh`. |
@@ -46,7 +46,7 @@ These still assume Willie's Mac. They were left as they are, not rewritten.
 
 - **The `board` CLI.** `superset-implementer` reports status with `board status ...`. The CLI is not in this repo and not in cloud sessions. The skill already says to skip `board status` in a cloud session and let the draft PR be the signal. `scripts/status.sh` is the older script version of the same thing.
 - **superset-orchestrator paths.** Briefs, status files and review records live under `~/.claude/superset-orchestrator/` (`briefs/`, `workspaces/`, `reviews/`). Nothing creates that folder in a cloud session, and nothing syncs it between machines.
-- **Review records.** `dplat-review` writes `~/.claude/superset-orchestrator/reviews/<owner>-<name>-<n>.json` when it posts, and reads it in the follow-up step. In a cloud session that file is lost when the container goes, so a later thread cannot find the Slack thread from it. It has to search Slack instead.
+- **Review records.** `dplat-review` and `fe-review` write `<owner>-<name>-<n>.json` when they post, and read it in the follow-up step: on a Mac to `~/.claude/superset-orchestrator/reviews/`, in a cloud project thread to `/mnt/project-files/reviews/`, which outlives the container. A cloud session outside a project has neither, so it searches Slack instead.
 - **design-os.** `superset-implementer` reads `~/Dev/design-os`. In a cloud session that repo is at the project's clone path instead, if it is attached.
 - **Slack and Linear.** The review skills post to Slack and read Linear through connectors. A session without those connectors cannot do those steps.
 - **Slack from a shell.** `watch-pr.sh` and `watch-slack.sh` read a Slack thread only with a token in `SLACK_TOKEN`, through the Web API. Cloud threads have no token and their network blocks `slack.com`, so there they check the thread with the Slack connector when they wake instead (see `watch-for-activity`).

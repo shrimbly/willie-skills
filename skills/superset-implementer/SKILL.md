@@ -359,12 +359,12 @@ feedback brief):
    `code.stay-current`). To catch up with main, merge main into your branch. PRs are
    squash-merged, so the merge commit never reaches main.
 7. **Bump the person whose feedback you answered.** Nothing does this automatically. For a
-   dev-platform PR, follow `dplat-review` step 9:
-   - re-request them on GitHub with REST;
-   - reply in the PR's review thread in #pillar3-dev-platform-code-reviews, mentioning them, with the commit and what changed.
+   dev-platform PR, follow `dplat-review` step 9; for a ComfyUI_frontend PR, `fe-review` step 9:
+   - assign the PR to them again on GitHub with REST (remove, then re-add);
+   - reply in the PR's review thread (#epd-comfy-platform-code-reviews for Vinh, #jaewon-requests for Jaewon), mentioning them and asking for a re-review, with the commit and what changed.
 
    Do it once per round, after every one of their comments has a reply and the push is done.
-   Skip it for fixes that answer only the Cursor bot. Re-requesting someone who already
+   Skip it for fixes that answer only the Cursor bot. Reassigning someone who already
    reviewed is part of answering them, so it doesn't need the brief's permission. Then
    `board status state pr-open`.
 
